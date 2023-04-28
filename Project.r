@@ -61,16 +61,16 @@ query_methly <- query_methly[, !dup_samples]
 query_methly
 
 #View()
-# plot probes showing differences in beta values between samples                                              
+# plot probes showing differences in beta values between samples                                               
 dna.meth <- GDCprepare(query_methly, summarizedExperiment = TRUE)
 methyl_data = assay(dna.meth)  
 View(methyl_data)
 #methylation data is in methyl_data
 
-idx <- dna.meth %>%
-  assay %>%
-  rowVars() %>%
-  order(decreasing = TRUE) %>%
+idx <- dna.meth %>% 
+  assay %>% 
+  rowVars() %>% 
+  order(decreasing = TRUE) %>% 
   head(50)
 
 
@@ -111,50 +111,136 @@ oncoplot(maf = maftools.input,
 
 
 # Mark the parameters
-K = 20; # number of neighbors, usually (10~30)
-alpha = 0.5;   # hyperparameter, usually (0.3~0.8)
-T = 20; # Number of Iterations, usually (10~20)
+K = 20;		# number of neighbors, usually (10~30)
+alpha = 0.5;  	# hyperparameter, usually (0.3~0.8)
+T = 20; 	# Number of Iterations, usually (10~20)
 
 
 # step 1 Data normalization
-
+View(brca_matrix)
 brca_matrix_scaled <- scale(brca_matrix)
 brca_matrix_log <- log2(brca_matrix_scaled + 1)
-View(brca_matrix_log)
+gene_data <- na.omit(brca_matrix_log)
+View(gene_data)
+
+
 # Preprocess methylation data
 methyl_data_scaled <- scale(methyl_data)
 methyl_data_log <- log2(methyl_data_scaled + 1)
-View(methyl_data_log)
+methyl_data_norm <- na.omit(methyl_data_log)
+
+View(methyl_data_norm)
 
 ###########ERROR - 1 #############################
 # Preprocess mutation data
-# Error in normalize.quantiles(as.matrix(maf)) :
+# Error in normalize.quantiles(as.matrix(maf)) : 
 # vector types do not match in copyVector
 #maf_norm <- normalize.quantiles(as.matrix(maf))
 
 ###resolved###
 
-###########ERROR - 1 #############################
 
 maf <- maf[, colSums(is.na(maf)) == 0]
 View(maf)
+###########ERROR - 1 #############################
 
+
+#gene_Dist1 = (dist2(gene_data,gene_data))^(1/2)
+#methyl_Dist2 = (dist2(methyl_data_norm,methyl_data_norm))^(1/2)
+
+## ERROR:
+#> gene_Dist1 = (dist2(as.matrix(gene_data),as.matrix(gene_data)))^(1/2)
+#Error: cannot allocate vector of size 27.4 Gb
+#> gene_Dist1 = (dist2(gene_data,gene_data))^(1/2)
+#Error: cannot allocate vector of size 27.4 Gb
 
 ## calculating euclidean/correlation distances
-gene_data_dist <- proxy::dist(t(brca_matrix_log), method = "correlation")
+
+
+gene_data_dist <- proxy::dist(t(gene_data), method = "correlation")
+#On viewing this it shows 
+#> View(gene_data_dist)
+#Error in names[[i]] : subscript out of bounds
 View(gene_data_dist)
+
+print(gene_data_dist)
+# should be square matrix
+print(dim(gene_data_dist))
+
+#151 151
+gene_data_dist_mat <- as.matrix(gene_data_dist)
+dim(gene_data_dist_mat) <- c(151, 151)
+colnames(gene_data_dist_mat) <-colnames(gene_data)
+View(gene_data_dist_mat)
+
+methylation_dist <- proxy::dist(t(methyl_data_norm), method = "Euclidean")
+#On viewing this it shows 
+#> View(methylation_dist)
+#Error in names[[i]] : subscript out of bounds
+View(methylation_dist)
+
+print(methylation_dist)
+# should be square matrix
+print(dim(methylation_dist))
+# 194 194
+methylation_dist_mat<-as.matrix(methylation_dist)
+dim(methylation_dist_mat) <- c(194, 194)
+colnames(methylation_dist_mat) <-colnames(methyl_data_norm)
+class(methylation_dist_mat)
+dim(methylation_dist_mat)
+View(methylation_dist_mat)
+
+
+## Calculating Affinity matrixes
+
+gene_affinity = SNFtool::affinityMatrix(gene_data_dist_mat, K, alpha)
+View(gene_affinity)
+methylation_affinity = SNFtool::affinityMatrix(methylation_dist_mat, K, alpha)
+View(methylation_affinity)
+
+
+#performing SNF
+
+#similarity_matrix = SNF(list(gene_affinity,methylation_affinity), K, T, merge.method = "intersection")
+
+library(dplyr)
+
+row.names(gene_data) <- 1:nrow(gene_data)
+row.names(methyl_data_norm) <- 1:nrow(methyl_data_norm)
+
+# Merge the two matrices based on their column names
+merged_data <- inner_join(as.data.frame(gene_affinity), as.data.frame(methylation_affinity), by = "row.names")
+
+# Remove the first column containing row names
+merged_data <- merged_data %>% select(-1)
+
+# Convert the merged data frame to a matrix
+merged_matrix <- as.matrix(merged_data)
+
+# Calculate the similarity matrix using SNF
+similarity_matrix <- SNF(list(merged_matrix), K, T)
+
+
+
+
+
+
+
+
+
+
+
+
 pheatmap(gene_data_dist)
 
-View(gene_data_dist)
+
 # 151 151
 
 View(methyl_data_log)
-methylation_dist <- proxy::dist(t(methyl_data_log), method = "correlation")
 
 
 # Increase distance between columns
-View(methylation_dist)
-print(methylation_dist)
+
 # 194 194
 
 mutation_dist <- proxy::dist(t(maf), method = "correlation")
@@ -181,16 +267,16 @@ print(is.na(gene_data_dist)== FALSE)
 
 # similarity_gene <- computeSimilarity(t(brca_matrix_log))
 
-# Error in computeSimilarity(t(brca_matrix_log)) :
+# Error in computeSimilarity(t(brca_matrix_log)) : 
 # could not find function "computeSimilarity"
 ##########################ERROR-3##########################
 
 
 ##########################ERROR-4##################################################
 # gene_sim_mat <- proxy::simil(1/(1+brca_matrix_log+ 1e-8))
-# Error in do.call(".External", c(list(CFUN, x, y, pairwise, if (!is.function(method)) get(method) else method),  :
+# Error in do.call(".External", c(list(CFUN, x, y, pairwise, if (!is.function(method)) get(method) else method),  : 
 #                negative length vectors are not allowed
-                               
+                                
 ##########################ERROR-4##################################################
 
 
@@ -209,3 +295,4 @@ print(is.na(gene_data_dist)== FALSE)
 
 
 ##########################ERROR-5##################################################
+
