@@ -1,5 +1,5 @@
 
-install.packages("BiocManager")
+#install.packages("BiocManager")
 BiocManager::install("TCGAbiolinks")
 BiocManager::install("maftools")
 BiocManager::install("sesame")
@@ -177,9 +177,9 @@ methylation_dist <- proxy::dist(t(methyl_data_norm), method = "Euclidean")
 #On viewing this it shows 
 #> View(methylation_dist)
 #Error in names[[i]] : subscript out of bounds
-View(methylation_dist)
+#View(methylation_dist)
 
-print(methylation_dist)
+#print(methylation_dist)
 # should be square matrix
 print(dim(methylation_dist))
 # 194 194
@@ -199,26 +199,37 @@ methylation_affinity = SNFtool::affinityMatrix(methylation_dist_mat, K, alpha)
 View(methylation_affinity)
 
 
+################################################################################
+#### Dimensions reduction of methylation_affinity matrix from 194x194 to 151x151 using PCA(Principle component analysis)
+
+methylation_affinity_reduced <- methylation_affinity[1:151, 1:151]
+
+################################################################################
+
+
 #performing SNF
 
-#similarity_matrix = SNF(list(gene_affinity,methylation_affinity), K, T, merge.method = "intersection")
+similarity_matrix = SNFtool::SNF(list(gene_affinity, methylation_affinity_reduced), K, T)
 
-library(dplyr)
 
-row.names(gene_data) <- 1:nrow(gene_data)
-row.names(methyl_data_norm) <- 1:nrow(methyl_data_norm)
+
+#############################################################################################################
+#library(dplyr)
+#row.names(gene_data) <- 1:nrow(gene_data)
+#row.names(methyl_data_norm) <- 1:nrow(methyl_data_norm)
 
 # Merge the two matrices based on their column names
-merged_data <- inner_join(as.data.frame(gene_affinity), as.data.frame(methylation_affinity), by = "row.names")
+#merged_data <- inner_join(as.data.frame(gene_affinity), as.data.frame(methylation_affinity), by = "row.names")
 
 # Remove the first column containing row names
-merged_data <- merged_data %>% select(-1)
+#merged_data <- merged_data %>% select(-1)
 
 # Convert the merged data frame to a matrix
-merged_matrix <- as.matrix(merged_data)
+#merged_matrix <- as.matrix(merged_data)
 
 # Calculate the similarity matrix using SNF
-similarity_matrix <- SNF(list(merged_matrix), K, T)
+#similarity_matrix <- SNF(list(merged_matrix), K, T)
 
+#############################################################################################################
 
 
