@@ -13,8 +13,6 @@ library(pheatmap)
 library(SummarizedExperiment)
 library(sesame)
 library(SNFtool)
-
-
 library(preprocessCore)
 library(proxy)
 
@@ -202,6 +200,26 @@ View(methylation_affinity)
 ################################################################################
 #### Dimensions reduction of methylation_affinity matrix from 194x194 to 151x151 using PCA(Principle component analysis)
 
+# Load the required package
+library(stats)
+
+# Apply PCA to the methylation_affinity matrix
+pca_result <- prcomp(methylation_affinity)
+
+# Get the proportion of variance explained by each principal component
+variance_explained <- pca_result$sdev^2 / sum(pca_result$sdev^2)
+
+# Determine the number of principal components needed to retain at least 95% of the variance
+cumulative_variance <- cumsum(variance_explained)
+num_components <- min(which(cumulative_variance >= 0.95))
+
+# Reduce the dimensions of the matrix by keeping the first 151 principal components
+methylation_affinity_reduced <- pca_result$x[1:151, 1:151]
+
+# Check the dimensions of the reduced matrix
+dim(methylation_affinity_reduced)
+
+
 methylation_affinity_reduced <- methylation_affinity[1:151, 1:151]
 
 ################################################################################
@@ -211,7 +229,10 @@ methylation_affinity_reduced <- methylation_affinity[1:151, 1:151]
 
 similarity_matrix = SNFtool::SNF(list(gene_affinity, methylation_affinity_reduced), K, T)
 
-
+#Warning message:
+#  In SNFtool::SNF(list(gene_affinity, methylation_affinity_reduced),  :
+#                    Dim names not consistent across all matrices in Wall.
+#                  Returned matrix will have no dim names.
 
 #############################################################################################################
 #library(dplyr)
@@ -232,4 +253,13 @@ similarity_matrix = SNFtool::SNF(list(gene_affinity, methylation_affinity_reduce
 
 #############################################################################################################
 
-
+## DATA export
+write.csv(brca_matrix, file = "BRCA_matrix.csv")
+write.csv(gene_affinity, file = "gene_affinity.csv")
+write.csv(gene_data_dist_mat, file = "gene_data_dist_matrix.csv")
+write.csv(maf, file = "maf.csv")
+write.csv(methyl_data, file = "methyl_matrix.csv")
+write.csv(methylation_affinity, file = "methylation_affinity.csv")
+write.csv(methylation_dist_mat, file = "methylation_dist_matrix.csv")
+write.csv(methylation_affinity_reduced, file = "methylation_affinity_reduced.csv")
+write.csv(similarity_matrix, file = "similarity_matrix.csv")
