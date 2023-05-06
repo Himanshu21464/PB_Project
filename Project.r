@@ -169,7 +169,7 @@ print(dim(gene_data_dist))
 gene_data_dist_mat <- as.matrix(gene_data_dist)
 dim(gene_data_dist_mat) <- c(151, 151)
 colnames(gene_data_dist_mat) <-colnames(gene_data)
-View(gene_data_dist_mat)
+#View(gene_data_dist_mat)
 
 methylation_dist <- proxy::dist(t(methyl_data_norm), method = "Euclidean")
 #On viewing this it shows 
@@ -263,3 +263,5 @@ write.csv(methylation_affinity, file = "methylation_affinity.csv")
 write.csv(methylation_dist_mat, file = "methylation_dist_matrix.csv")
 write.csv(methylation_affinity_reduced, file = "methylation_affinity_reduced.csv")
 write.csv(similarity_matrix, file = "similarity_matrix.csv")
+
+
