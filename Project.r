@@ -1,5 +1,5 @@
 
-#install.packages("BiocManager")
+install.packages("BiocManager")
 BiocManager::install("TCGAbiolinks")
 BiocManager::install("maftools")
 BiocManager::install("sesame")
@@ -13,6 +13,8 @@ library(pheatmap)
 library(SummarizedExperiment)
 library(sesame)
 library(SNFtool)
+
+
 library(preprocessCore)
 library(proxy)
 
@@ -120,7 +122,7 @@ brca_matrix_scaled <- scale(brca_matrix)
 brca_matrix_log <- log2(brca_matrix_scaled + 1)
 gene_data <- na.omit(brca_matrix_log)
 View(gene_data)
-
+## Abhi tak toh hai.
 
 # Preprocess methylation data
 methyl_data_scaled <- scale(methyl_data)
@@ -140,21 +142,9 @@ View(methyl_data_norm)
 
 maf <- maf[, colSums(is.na(maf)) == 0]
 View(maf)
-###########ERROR - 1 #############################
 
 
-#gene_Dist1 = (dist2(gene_data,gene_data))^(1/2)
-#methyl_Dist2 = (dist2(methyl_data_norm,methyl_data_norm))^(1/2)
-
-## ERROR:
-#> gene_Dist1 = (dist2(as.matrix(gene_data),as.matrix(gene_data)))^(1/2)
-#Error: cannot allocate vector of size 27.4 Gb
-#> gene_Dist1 = (dist2(gene_data,gene_data))^(1/2)
-#Error: cannot allocate vector of size 27.4 Gb
-
-## calculating euclidean/correlation distances
-
-
+##################calculating distance matrix######################
 gene_data_dist <- proxy::dist(t(gene_data), method = "correlation")
 #On viewing this it shows 
 #> View(gene_data_dist)
@@ -164,26 +154,31 @@ View(gene_data_dist)
 print(gene_data_dist)
 # should be square matrix
 print(dim(gene_data_dist))
+dim(gene_data)
+dim(gene_data_dist)
 
 #151 151
+
 gene_data_dist_mat <- as.matrix(gene_data_dist)
-dim(gene_data_dist_mat) <- c(151, 151)
-colnames(gene_data_dist_mat) <-colnames(gene_data)
-#View(gene_data_dist_mat)
+#dim(gene_data_dist_mat) <- c(151, 151)
+dim(gene_data_dist_mat)
+#colnames(gene_data_dist_mat) <-colnames(gene_data)
+View(gene_data_dist_mat)
 
 methylation_dist <- proxy::dist(t(methyl_data_norm), method = "Euclidean")
 #On viewing this it shows 
 #> View(methylation_dist)
 #Error in names[[i]] : subscript out of bounds
-#View(methylation_dist)
 
-#print(methylation_dist)
+View(methylation_dist)
+
+print(methylation_dist)
 # should be square matrix
 print(dim(methylation_dist))
 # 194 194
 methylation_dist_mat<-as.matrix(methylation_dist)
-dim(methylation_dist_mat) <- c(194, 194)
-colnames(methylation_dist_mat) <-colnames(methyl_data_norm)
+#dim(methylation_dist_mat) <- c(194, 194)
+#colnames(methylation_dist_mat) <-colnames(methyl_data_norm)
 class(methylation_dist_mat)
 dim(methylation_dist_mat)
 View(methylation_dist_mat)
@@ -195,6 +190,13 @@ gene_affinity = SNFtool::affinityMatrix(gene_data_dist_mat, K, alpha)
 View(gene_affinity)
 methylation_affinity = SNFtool::affinityMatrix(methylation_dist_mat, K, alpha)
 View(methylation_affinity)
+
+dim(gene_affinity)
+dim(methylation_affinity)
+pheatmap(gene_affinity)
+pheatmap(methylation_affinity)
+
+####################CORRECT AND CONFIRMED(By Google and chatGPT) TILL HERE#############################
 
 
 ################################################################################
@@ -219,9 +221,13 @@ methylation_affinity_reduced <- pca_result$x[1:151, 1:151]
 # Check the dimensions of the reduced matrix
 dim(methylation_affinity_reduced)
 
+## Alternate, picking the first 151 instead of reducing it the right way
+## methylation_affinity_reduced <- methylation_affinity[1:151, 1:151] 
 
-methylation_affinity_reduced <- methylation_affinity[1:151, 1:151]
-
+################################################################################
+# Possible error right now:
+# 1. The matrix after performing PCA, is reduced to the required dimensions, but it is not having the column names. 
+# 2. The similarity matrix we were having did not have row and column names 
 ################################################################################
 
 
