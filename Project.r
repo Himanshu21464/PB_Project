@@ -13,8 +13,6 @@ library(pheatmap)
 library(SummarizedExperiment)
 library(sesame)
 library(SNFtool)
-
-
 library(preprocessCore)
 library(proxy)
 
