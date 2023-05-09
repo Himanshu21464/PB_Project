@@ -185,33 +185,100 @@ silhouette_widths <- sapply(num_clusters_range, function(num_clusters) {
 plot(num_clusters_range, silhouette_widths, type = "b", 
      xlab = "Number of clusters", ylab = "Average silhouette width")
 
-# 7 is highest avg width in given range
-# do clustering for 7 
+## 7 is highest avg width in given range
+## do clustering for 7 
 
-C = 7
+#C = 7
+#cluster<- spectralClustering(snf_result,C)
+#displayClusters(snf_result,cluster)
+
+#cluster_df <- as.data.frame(cluster)
+#snf_result_df <- as.data.frame(snf_result)
+
+#c1 <- which(cluster_df$cluster==1, arr.ind=TRUE)
+#c1_row <- rownames(snf_result_df[c1, ])
+
+#c2 <- which(cluster_df$cluster==2, arr.ind=TRUE)
+#c2_row <- rownames(snf_result_df[c2, ])
+
+#c3 <- which(cluster_df$cluster==3, arr.ind=TRUE)
+#c3_row <- rownames(snf_result_df[c3, ])
+
+#c4 <- which(cluster_df$cluster==4, arr.ind=TRUE)
+#c4_row <- rownames(snf_result_df[c4, ])
+
+#c5 <- which(cluster_df$cluster==5, arr.ind=TRUE)
+#c5_row <- rownames(snf_result_df[c5, ])
+
+#c6 <- which(cluster_df$cluster==6, arr.ind=TRUE)
+#c6_row <- rownames(snf_result_df[c6, ])
+
+#c7 <- which(cluster_df$cluster==7, arr.ind=TRUE)
+#c7_row <- rownames(snf_result_df[c7, ])
+
+################### Differential Expression Analysis ######################
+C<-7
+
 cluster<- spectralClustering(snf_result,C)
 displayClusters(snf_result,cluster)
 
 cluster_df <- as.data.frame(cluster)
 snf_result_df <- as.data.frame(snf_result)
 
-c1 <- which(cluster_df$cluster==1, arr.ind=TRUE)
-c1_row <- rownames(snf_result_df[c1, ])
+# Create an empty list to store the results
+cluster_rows <- list()
 
-c2 <- which(cluster_df$cluster==2, arr.ind=TRUE)
-c2_row <- rownames(snf_result_df[c2, ])
+# Loop over each cluster
+for (i in 1:7) {
+  # Get the indices of the data points in the current cluster
+  c <- which(cluster_df$cluster == i, arr.ind = TRUE)
+  
+  # Extract the row names of the data points in the current cluster
+  c_row <- rownames(snf_result_df[c, ])
+  
+  # Store the row names in the list
+  cluster_rows[[i]] <- c_row
+}
 
-c3 <- which(cluster_df$cluster==3, arr.ind=TRUE)
-c3_row <- rownames(snf_result_df[c3, ])
+# View the results
+cluster_rows
 
-c4 <- which(cluster_df$cluster==4, arr.ind=TRUE)
-c4_row <- rownames(snf_result_df[c4, ])
+cluster_rows_df <- data.frame(cluster = rep(1:length(cluster_rows), sapply(cluster_rows, length)),
+                              gene = unlist(cluster_rows))
 
-c5 <- which(cluster_df$cluster==5, arr.ind=TRUE)
-c5_row <- rownames(snf_result_df[c5, ])
+# Extract the cluster assignments from the cluster_df data frame
+cluster_assignments <- cluster_df$cluster
 
-c6 <- which(cluster_df$cluster==6, arr.ind=TRUE)
-c6_row <- rownames(snf_result_df[c6, ])
+# Convert cluster_assignments into a factor variable
+cluster_factor <- factor(cluster_assignments)
 
-c7 <- which(cluster_df$cluster==7, arr.ind=TRUE)
-c7_row <- rownames(snf_result_df[c7, ])
+
+
+brca_matrix_com_df<-data.frame(brca_matrix_com)
+colnames(cluster_rows_df)
+library(limma)
+
+library(edgeR)
+
+# Convert the gene expression matrix into a DGEList object
+dge <- DGEList(counts = brca_matrix_com_df)
+
+
+view(dge)
+
+
+view(cluster_factor)
+
+design <- model.matrix(~ 0 + cluster_factor)
+view(design)
+
+v <- voom(dge, design)
+view(v)
+
+fit <- lmFit(v, design)
+
+fit <- eBayes(fit)
+results <- topTable(fit, number = Inf)
+
+# View the results
+view(results)
