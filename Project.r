@@ -282,3 +282,55 @@ results <- topTable(fit, number = Inf)
 
 # View the results
 view(results)
+
+
+
+########################  logFC calculation #######################################
+
+
+# Define a function to calculate logFC for each cluster
+calculate_logFC <- function(cluster_name, results) {
+  # Extract the column corresponding to the given cluster
+  cluster_col <- paste0("cluster_factor", cluster_name)
+  cluster_vals <- results[, cluster_col]
+  
+  # Calculate the average expression of the cluster
+  cluster_aveexpr <- results$AveExpr
+  
+  # Calculate the logFC
+  logFC <- log2(cluster_vals / cluster_aveexpr)
+  
+  # Add the logFC column to the results matrix
+  results[, paste0("logFC_", cluster_name)] <- logFC
+  
+  return(results)
+}
+
+
+# Calculate the mean of the logFC columns
+logFC_mean <- rowMeans(results[, grep("^logFC_", colnames(results))])
+
+# Add a new column named "logfoldchange" to the results matrix
+results$logfoldchange <- logFC_mean
+View(results)
+
+
+library(ggplot2)
+
+# create a subset of the results matrix with columns of interest
+results_sub <- results[, c("logfoldchange", "P.Value")]
+
+# define the threshold for significant genes
+threshold <- 0.05
+
+# create a volcano plot using ggplot2
+volcano_plot <- ggplot(results_sub, aes(x = logfoldchange, y = -log10(P.Value))) +
+  geom_point(aes(color = ifelse(P.Value < threshold, "sig", "not_sig")), alpha = 0.7) +
+  scale_color_manual(values = c("sig" = "black", "not_sig" = "red"), guide = FALSE) +
+  labs(x = "Log2 Fold Change", y = "-log10(P-value)", title = "Volcano Plot") +
+  theme_bw()
+
+# display the plot
+volcano_plot
+
+###################################### Volcano plot seems to be incorrect ###########################################
