@@ -69,9 +69,9 @@ idx <- dna.meth %>%
 
 
 # plot
-pheatmap(methyl_data[idx,])
+pheatmap(methyl_data[idx,],fontsize_row =3,fontsize_col = 3)
 
-View(methyl_data)
+#View(methyl_data)
          
 
 ################################ Similarity Network Fusion ##########################################
@@ -155,37 +155,63 @@ View(methylation_affinity)
 
 dim(gene_affinity)
 dim(methylation_affinity)
-pheatmap(gene_affinity)
-pheatmap(methylation_affinity)
+pheatmap(gene_affinity,fontsize_col = 3,fontsize_row = 3)
+pheatmap(methylation_affinity,fontsize_col = 3,fontsize_row = 3)
 
-
-
-
-
-library(dplyr)
-library(stats)
-
-
-pca_gene <- prcomp(gene_affinity, scale. = TRUE)
-pca_methylation <- prcomp(methylation_affinity, scale. = TRUE)
-dim
-# Extract the first few principal components
-pc_gene <- pca_gene$x[, 1:2]
-pc_methylation <- pca_methylation$x[, 1:2]
-
-dim(pc_gene)
-dim(pc_methylation)
-View(methylation_affinity_reduced)
-K <- 20
-alpha <- 0.5
 
 # Perform SNF on the principal component matrices
 snf_result <- SNFtool::SNF(list(gene_affinity, methylation_affinity), K, alpha)
 view(snf_result)
-num_clusters<-5
 
-clustering_result <- spectralClustering(snf_result, num_clusters)
+# Create a function to calculate the average silhouette width
+calculate_silhouette_width <- function(data, num_clusters) {
+  # Perform spectral clustering
+  cluster_labels <- spectralClustering(data, num_clusters)
+  # Calculate the silhouette width
+  silhouette_width <- silhouette(cluster_labels, dist(data))
+  silhouette_width <- as.data.frame(silhouette_width)
+  return(mean(silhouette_width$sil_width))
+}
 
-# View the clustering result
-print(clustering_result)
+# Define the range of the number of clusters to test
+num_clusters_range <- 2:8
 
+# Calculate the silhouette width for each number of clusters
+silhouette_widths <- sapply(num_clusters_range, function(num_clusters) {
+  calculate_silhouette_width(snf_result, num_clusters)
+})
+
+# Plot the silhouette widths against the number of clusters
+plot(num_clusters_range, silhouette_widths, type = "b", 
+     xlab = "Number of clusters", ylab = "Average silhouette width")
+
+# 7 is highest avg width in given range
+# do clustering for 7 
+
+C = 7
+cluster<- spectralClustering(snf_result,C)
+displayClusters(snf_result,cluster)
+
+cluster_df <- as.data.frame(cluster)
+snf_result_df <- as.data.frame(snf_result)
+
+c1 <- which(cluster_df$cluster==1, arr.ind=TRUE)
+c1_row <- rownames(snf_result_df[c1, ])
+
+c2 <- which(cluster_df$cluster==2, arr.ind=TRUE)
+c2_row <- rownames(snf_result_df[c2, ])
+
+c3 <- which(cluster_df$cluster==3, arr.ind=TRUE)
+c3_row <- rownames(snf_result_df[c3, ])
+
+c4 <- which(cluster_df$cluster==4, arr.ind=TRUE)
+c4_row <- rownames(snf_result_df[c4, ])
+
+c5 <- which(cluster_df$cluster==5, arr.ind=TRUE)
+c5_row <- rownames(snf_result_df[c5, ])
+
+c6 <- which(cluster_df$cluster==6, arr.ind=TRUE)
+c6_row <- rownames(snf_result_df[c6, ])
+
+c7 <- which(cluster_df$cluster==7, arr.ind=TRUE)
+c7_row <- rownames(snf_result_df[c7, ])
