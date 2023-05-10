@@ -1,4 +1,3 @@
-
 library(TCGAbiolinks)
 library(tidyverse)
 library(maftools)
@@ -6,8 +5,7 @@ library(pheatmap)
 library(SummarizedExperiment)
 library(sesame)
 library(SNFtool)
-
-
+library(EnhancedVolcano)
 library(preprocessCore)
 library(proxy)
 
@@ -72,7 +70,7 @@ idx <- dna.meth %>%
 pheatmap(methyl_data[idx,],fontsize_row =3,fontsize_col = 3)
 
 #View(methyl_data)
-         
+
 
 ################################ Similarity Network Fusion ##########################################
 
@@ -155,68 +153,14 @@ View(methylation_affinity)
 
 dim(gene_affinity)
 dim(methylation_affinity)
-pheatmap(gene_affinity,fontsize_col = 3,fontsize_row = 3)
-pheatmap(methylation_affinity,fontsize_col = 3,fontsize_row = 3)
+
 
 
 # Perform SNF on the principal component matrices
 snf_result <- SNFtool::SNF(list(gene_affinity, methylation_affinity), K, alpha)
 view(snf_result)
 
-# Create a function to calculate the average silhouette width
-calculate_silhouette_width <- function(data, num_clusters) {
-  # Perform spectral clustering
-  cluster_labels <- spectralClustering(data, num_clusters)
-  # Calculate the silhouette width
-  silhouette_width <- silhouette(cluster_labels, dist(data))
-  silhouette_width <- as.data.frame(silhouette_width)
-  return(mean(silhouette_width$sil_width))
-}
 
-# Define the range of the number of clusters to test
-num_clusters_range <- 2:8
-
-# Calculate the silhouette width for each number of clusters
-silhouette_widths <- sapply(num_clusters_range, function(num_clusters) {
-  calculate_silhouette_width(snf_result, num_clusters)
-})
-
-# Plot the silhouette widths against the number of clusters
-plot(num_clusters_range, silhouette_widths, type = "b", 
-     xlab = "Number of clusters", ylab = "Average silhouette width")
-
-## 7 is highest avg width in given range
-## do clustering for 7 
-
-#C = 7
-#cluster<- spectralClustering(snf_result,C)
-#displayClusters(snf_result,cluster)
-
-#cluster_df <- as.data.frame(cluster)
-#snf_result_df <- as.data.frame(snf_result)
-
-#c1 <- which(cluster_df$cluster==1, arr.ind=TRUE)
-#c1_row <- rownames(snf_result_df[c1, ])
-
-#c2 <- which(cluster_df$cluster==2, arr.ind=TRUE)
-#c2_row <- rownames(snf_result_df[c2, ])
-
-#c3 <- which(cluster_df$cluster==3, arr.ind=TRUE)
-#c3_row <- rownames(snf_result_df[c3, ])
-
-#c4 <- which(cluster_df$cluster==4, arr.ind=TRUE)
-#c4_row <- rownames(snf_result_df[c4, ])
-
-#c5 <- which(cluster_df$cluster==5, arr.ind=TRUE)
-#c5_row <- rownames(snf_result_df[c5, ])
-
-#c6 <- which(cluster_df$cluster==6, arr.ind=TRUE)
-#c6_row <- rownames(snf_result_df[c6, ])
-
-#c7 <- which(cluster_df$cluster==7, arr.ind=TRUE)
-#c7_row <- rownames(snf_result_df[c7, ])
-
-################### Differential Expression Analysis ######################
 C<-7
 
 cluster<- spectralClustering(snf_result,C)
@@ -246,10 +190,9 @@ cluster_rows
 cluster_rows_df <- data.frame(cluster = rep(1:length(cluster_rows), sapply(cluster_rows, length)),
                               gene = unlist(cluster_rows))
 
-# Extract the cluster assignments from the cluster_df data frame
 cluster_assignments <- cluster_df$cluster
 
-# Convert cluster_assignments into a factor variable
+
 cluster_factor <- factor(cluster_assignments)
 
 
@@ -260,7 +203,7 @@ library(limma)
 
 library(edgeR)
 
-# Convert the gene expression matrix into a DGEList object
+
 dge <- DGEList(counts = brca_matrix_com_df)
 
 
@@ -280,15 +223,7 @@ fit <- lmFit(v, design)
 fit <- eBayes(fit)
 results <- topTable(fit, number = Inf)
 
-# View the results
 view(results)
-
-
-
-########################  logFC calculation #######################################
-
-
-# Define a function to calculate logFC for each cluster
 calculate_logFC <- function(cluster_name, results) {
   # Extract the column corresponding to the given cluster
   cluster_col <- paste0("cluster_factor", cluster_name)
@@ -306,6 +241,13 @@ calculate_logFC <- function(cluster_name, results) {
   return(results)
 }
 
+# Apply the function to each cluster
+for (i in 1:7) {
+  results <- calculate_logFC(i, results)
+}
+
+
+
 
 # Calculate the mean of the logFC columns
 logFC_mean <- rowMeans(results[, grep("^logFC_", colnames(results))])
@@ -313,24 +255,74 @@ logFC_mean <- rowMeans(results[, grep("^logFC_", colnames(results))])
 # Add a new column named "logfoldchange" to the results matrix
 results$logfoldchange <- logFC_mean
 View(results)
+library(ggplot2)
+
+
+# Subset the results matrix to include only columns of interest
+results_sub <- results[, c("logfoldchange", "P.Value")]
+
+# Set the threshold for significant genes
+threshold <- exp(-60)
+
+# Create a vector of colors for significant and non-significant genes
+colors <- ifelse(results_sub$P.Value < threshold, "red", "black")
+
+# Create the volcano plot
+EnhancedVolcano(
+  results_sub,
+  lab = rownames(results_sub),
+  x = "logfoldchange",
+  y = "P.Value",
+  xlim = c(-3, 3),
+  title = "Enhanced Volcano Plot",
+  pCutoff = threshold,
+  FCcutoff = 0.0089,
+  
+)
+
+# Filter the results to only include significant genes
+significant_genes <- results_sub[results_sub$P.Value < threshold & results_sub$logfoldchange<0.0089, ]
+
+# Add a new column with the gene names
+significant_genes$GeneName <- rownames(significant_genes)
+View(significant_genes)
+
+view(significant_genes)
+gene_list <- as.matrix(significant_genes[, c("GeneName", "logfoldchange")])
+gene_list <- gene_list[order(gene_list[,2], decreasing=TRUE),]
+
+
+#gene_list <- sort(gene_list, decreasing = TRUE)
+
+# Extract the first 14 characters of the GeneName column
+gene_list <- substr(gene_list, 1, 15)
+library(ggrepel)
+library(ggfortify)
+library(plotly)
+
+view(new_matrix)
+view(gene_list)
+library(dplyr)
+library(stats)
+library(ggfortify)
+library(clusterProfiler)
+library(org.Hs.eg.db)
+view(gene_list)
+rownames(gene_list)
+
+
+result <- enrichGO(gene          = gene_list,
+                   OrgDb         = org.Hs.eg.db,
+                   keyType       = "ENSEMBL",
+                   ont           = "BP",
+                   pAdjustMethod = "BH",
+                   pvalueCutoff  = 0.05,
+                   qvalueCutoff  = 0.2,
+                   universe      = NULL)
+print(result)
 
 
 library(ggplot2)
-
-# create a subset of the results matrix with columns of interest
-results_sub <- results[, c("logfoldchange", "P.Value")]
-
-# define the threshold for significant genes
-threshold <- 0.05
-
-# create a volcano plot using ggplot2
-volcano_plot <- ggplot(results_sub, aes(x = logfoldchange, y = -log10(P.Value))) +
-  geom_point(aes(color = ifelse(P.Value < threshold, "sig", "not_sig")), alpha = 0.7) +
-  scale_color_manual(values = c("sig" = "black", "not_sig" = "red"), guide = FALSE) +
-  labs(x = "Log2 Fold Change", y = "-log10(P-value)", title = "Volcano Plot") +
-  theme_bw()
-
-# display the plot
-volcano_plot
-
-###################################### Volcano plot seems to be incorrect ###########################################
+library(RColorBrewer)
+dotplot(result, showCategory = 30, title = "GO Enrichment Analysis" )
+barplot(result, showCategory = 30, xlab= "GO Enrichment Analysis" )
