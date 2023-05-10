@@ -300,14 +300,14 @@ library(ggrepel)
 library(ggfortify)
 library(plotly)
 
-view(new_matrix)
-view(gene_list)
+View(new_matrix)
+View(gene_list)
 library(dplyr)
 library(stats)
 library(ggfortify)
 library(clusterProfiler)
 library(org.Hs.eg.db)
-view(gene_list)
+View(gene_list)
 rownames(gene_list)
 
 
