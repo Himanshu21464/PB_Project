@@ -23,11 +23,6 @@ library(ggplot2)
 library(RColorBrewer)
 library(enrichplot)
 library(BiocManager)
-install("edgeR")
-install("EnhancedVolcano")
-install.packages("edgeR", dependencies = TRUE)
-
-BiocManager::install("TCGAbiolinks")
 
 # get a list of projects
 gdcprojects <- getGDCprojects()
@@ -306,7 +301,6 @@ gene_list <- gene_list[order(gene_list[,2], decreasing=TRUE),]
 gene_list <- substr(gene_list, 1, 15)
 
 
-# view(new_matrix)
 view(gene_list)
 
 view(gene_list)
