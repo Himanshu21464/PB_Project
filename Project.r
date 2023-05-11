@@ -120,44 +120,16 @@ View(methyl_data_norm)
 
 ##################calculating distance matrix######################
 gene_data_dist <- proxy::dist(t(gene_data), method = "correlation")
-#On viewing this it shows 
-#> View(gene_data_dist)
-#Error in names[[i]] : subscript out of bounds
-#View(gene_data_dist)
-
-#print(gene_data_dist)
-# should be square matrix
-#print(dim(gene_data_dist))
-#dim(gene_data)
-#dim(gene_data_dist)
-
-#151 151
-
-gene_data_dist_mat <- as.matrix(gene_data_dist)
+#gene_data_dist_mat <- as.matrix(gene_data_dist)
 #dim(gene_data_dist_mat) <- c(151, 151)
-dim(gene_data_dist_mat)
+#dim(gene_data_dist_mat)
 #colnames(gene_data_dist_mat) <-colnames(gene_data)
 #View(gene_data_dist_mat)
 
 methylation_dist <- proxy::dist(t(methyl_data_norm), method = "Euclidean")
-#On viewing this it shows 
-#> View(methylation_dist)
-#Error in names[[i]] : subscript out of bounds
-
-#View(methylation_dist)
-
-#print(methylation_dist)
-# should be square matrix
-#print(dim(methylation_dist))
-# 194 194
 methylation_dist_mat<-as.matrix(methylation_dist)
 
-#class(methylation_dist_mat)
-#dim(methylation_dist_mat)
-#View(methylation_dist_mat)
-
-
-## Calculating Affinity matrixes
+############### Calculating Affinity matrices #####################
 
 gene_affinity = SNFtool::affinityMatrix(gene_data_dist_mat, K, alpha)
 View(gene_affinity)
@@ -173,6 +145,9 @@ dim(methylation_affinity)
 snf_result <- SNFtool::SNF(list(gene_affinity, methylation_affinity), K, alpha)
 view(snf_result)
 
+
+
+#####################################  CLUSTERING  ###############################################
 
 C<-7
 
@@ -199,6 +174,9 @@ for (i in 1:7) {
 
 # View the results
 cluster_rows
+
+########################################### Differential Expression Analysis ##############################################
+
 
 cluster_rows_df <- data.frame(cluster = rep(1:length(cluster_rows), sapply(cluster_rows, length)),
                               gene = unlist(cluster_rows))
@@ -291,6 +269,9 @@ EnhancedVolcano(
   
 )
 
+############################################# Enrichment Analysis #################################################################
+
+
 # Filter the results to only include significant genes
 significant_genes <- results_sub[results_sub$P.Value < threshold & results_sub$logfoldchange<0.0089, ]
 
@@ -310,10 +291,10 @@ gene_list <- substr(gene_list, 1, 15)
 
 
 #view(new_matrix)
-#view(gene_list)
+view(gene_list)
 
-#view(gene_list)
-#rownames(gene_list)
+view(gene_list)
+rownames(gene_list)
 
 
 result <- enrichGO(gene          = gene_list,
