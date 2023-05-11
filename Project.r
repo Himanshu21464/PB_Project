@@ -6,9 +6,22 @@ library(SummarizedExperiment)
 library(sesame)
 library(SNFtool)
 library(EnhancedVolcano)
+library(limma)
+library(ggrepel)
+library(ggfortify)
+library(plotly)
+library(edgeR)
 library(preprocessCore)
 library(proxy)
-
+library(dplyr)
+library(stats)
+library(ggfortify)
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(ggplot2)
+library(ggplot2)
+library(RColorBrewer)
+library(enrichplot)
 # get a list of projects
 gdcprojects <- getGDCprojects()
 getProjectSummary('TCGA-LAML')
@@ -110,13 +123,13 @@ gene_data_dist <- proxy::dist(t(gene_data), method = "correlation")
 #On viewing this it shows 
 #> View(gene_data_dist)
 #Error in names[[i]] : subscript out of bounds
-View(gene_data_dist)
+#View(gene_data_dist)
 
-print(gene_data_dist)
+#print(gene_data_dist)
 # should be square matrix
-print(dim(gene_data_dist))
-dim(gene_data)
-dim(gene_data_dist)
+#print(dim(gene_data_dist))
+#dim(gene_data)
+#dim(gene_data_dist)
 
 #151 151
 
@@ -124,24 +137,24 @@ gene_data_dist_mat <- as.matrix(gene_data_dist)
 #dim(gene_data_dist_mat) <- c(151, 151)
 dim(gene_data_dist_mat)
 #colnames(gene_data_dist_mat) <-colnames(gene_data)
-View(gene_data_dist_mat)
+#View(gene_data_dist_mat)
 
 methylation_dist <- proxy::dist(t(methyl_data_norm), method = "Euclidean")
 #On viewing this it shows 
 #> View(methylation_dist)
 #Error in names[[i]] : subscript out of bounds
 
-View(methylation_dist)
+#View(methylation_dist)
 
-print(methylation_dist)
+#print(methylation_dist)
 # should be square matrix
-print(dim(methylation_dist))
+#print(dim(methylation_dist))
 # 194 194
 methylation_dist_mat<-as.matrix(methylation_dist)
 
-class(methylation_dist_mat)
-dim(methylation_dist_mat)
-View(methylation_dist_mat)
+#class(methylation_dist_mat)
+#dim(methylation_dist_mat)
+#View(methylation_dist_mat)
 
 
 ## Calculating Affinity matrixes
@@ -149,7 +162,7 @@ View(methylation_dist_mat)
 gene_affinity = SNFtool::affinityMatrix(gene_data_dist_mat, K, alpha)
 View(gene_affinity)
 methylation_affinity = SNFtool::affinityMatrix(methylation_dist_mat, K, alpha)
-View(methylation_affinity)
+#View(methylation_affinity)
 
 dim(gene_affinity)
 dim(methylation_affinity)
@@ -199,9 +212,7 @@ cluster_factor <- factor(cluster_assignments)
 
 brca_matrix_com_df<-data.frame(brca_matrix_com)
 colnames(cluster_rows_df)
-library(limma)
 
-library(edgeR)
 
 
 dge <- DGEList(counts = brca_matrix_com_df)
@@ -255,7 +266,7 @@ logFC_mean <- rowMeans(results[, grep("^logFC_", colnames(results))])
 # Add a new column named "logfoldchange" to the results matrix
 results$logfoldchange <- logFC_mean
 View(results)
-library(ggplot2)
+
 
 
 # Subset the results matrix to include only columns of interest
@@ -296,33 +307,70 @@ gene_list <- gene_list[order(gene_list[,2], decreasing=TRUE),]
 
 # Extract the first 14 characters of the GeneName column
 gene_list <- substr(gene_list, 1, 15)
-library(ggrepel)
-library(ggfortify)
-library(plotly)
 
-View(new_matrix)
-View(gene_list)
-library(dplyr)
-library(stats)
-library(ggfortify)
-library(clusterProfiler)
-library(org.Hs.eg.db)
-View(gene_list)
-rownames(gene_list)
+
+#view(new_matrix)
+#view(gene_list)
+
+#view(gene_list)
+#rownames(gene_list)
 
 
 result <- enrichGO(gene          = gene_list,
                    OrgDb         = org.Hs.eg.db,
                    keyType       = "ENSEMBL",
                    ont           = "BP",
-                   pAdjustMethod = "BH",
-                   pvalueCutoff  = 0.05,
+                   pvalueCutoff  = exp(-60),
                    qvalueCutoff  = 0.2,
                    universe      = NULL)
 print(result)
 
 
-library(ggplot2)
-library(RColorBrewer)
+
+
+
 dotplot(result, showCategory = 30, title = "GO Enrichment Analysis" )
 barplot(result, showCategory = 30, xlab= "GO Enrichment Analysis" )
+cnetplot(result,10)
+goplot(result,20)
+geneID_by_category <- list()
+
+expr_data <- get_expr_data(gene_list)
+#view(expr_data)
+# Create a heatmap
+#heatmap(result, expr_data)
+
+for (i in 1:nrow(result)) {
+
+  category <- result[i, "Description"]
+  geneIDs <- strsplit(result[i, "geneID"], "/")[[1]]
+  
+  
+  geneID_by_category[[category]] <- geneIDs
+}
+
+edges <- data.frame(from = character(), to = character(), stringsAsFactors = FALSE)
+
+# Loop through each category in the geneID_by_category list
+for (category in names(geneID_by_category)) {
+  # Get the gene IDs associated with the current category
+  geneIDs <- geneID_by_category[[category]]
+  
+  # Create a data frame representing the edges between the category and the gene IDs
+  category_edges <- data.frame(from = category, to = geneIDs, stringsAsFactors = FALSE)
+  
+  # Add the edges to the edge list
+  edges <- rbind(edges, category_edges)
+}
+
+
+#install.packages("igraph")
+library(igraph)
+
+
+graph <- graph_from_data_frame(edges)
+plot(graph)
+
+
+
+
