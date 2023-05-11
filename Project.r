@@ -22,6 +22,13 @@ library(ggplot2)
 library(ggplot2)
 library(RColorBrewer)
 library(enrichplot)
+library(BiocManager)
+install("edgeR")
+install("EnhancedVolcano")
+install.packages("edgeR", dependencies = TRUE)
+
+BiocManager::install("TCGAbiolinks")
+
 # get a list of projects
 gdcprojects <- getGDCprojects()
 getProjectSummary('TCGA-LAML')
@@ -100,13 +107,14 @@ colnames(brca_matrix)  = substr(colnames(brca_matrix),1,15)
 colnames(methyl_data)  = substr(colnames(methyl_data),1,15)
 meth_com = methyl_data[,common_pat]
 brca_matrix_com = brca_matrix[,common_pat]
+
 # step 1 Data normalization
 View(brca_matrix)
 brca_matrix_scaled <- scale(brca_matrix_com)
 brca_matrix_log <- log2(brca_matrix_scaled + 1)
 gene_data <- na.omit(brca_matrix_log)
 View(gene_data)
-## Abhi tak toh hai.
+
 
 # Preprocess methylation data
 methyl_data_scaled <- scale(meth_com)
@@ -120,34 +128,50 @@ View(methyl_data_norm)
 
 ##################calculating distance matrix######################
 gene_data_dist <- proxy::dist(t(gene_data), method = "correlation")
-#gene_data_dist_mat <- as.matrix(gene_data_dist)
-#dim(gene_data_dist_mat) <- c(151, 151)
-#dim(gene_data_dist_mat)
-#colnames(gene_data_dist_mat) <-colnames(gene_data)
-#View(gene_data_dist_mat)
+
+
+print(gene_data_dist)
+# should be square matrix
+print(dim(gene_data_dist))
+dim(gene_data)
+dim(gene_data_dist)
+
+#151 151
+
+gene_data_dist_mat <- as.matrix(gene_data_dist)
+
+dim(gene_data_dist_mat)
+
+View(gene_data_dist_mat)
 
 methylation_dist <- proxy::dist(t(methyl_data_norm), method = "Euclidean")
+
+print(methylation_dist)
+# should be square matrix
+
 methylation_dist_mat<-as.matrix(methylation_dist)
 
-############### Calculating Affinity matrices #####################
+class(methylation_dist_mat)
+dim(methylation_dist_mat)
+View(methylation_dist_mat)
+
+
+## Calculating Affinity matrixes
 
 gene_affinity = SNFtool::affinityMatrix(gene_data_dist_mat, K, alpha)
 View(gene_affinity)
 methylation_affinity = SNFtool::affinityMatrix(methylation_dist_mat, K, alpha)
-#View(methylation_affinity)
+View(methylation_affinity)
 
 dim(gene_affinity)
 dim(methylation_affinity)
 
 
-
 # Perform SNF on the principal component matrices
 snf_result <- SNFtool::SNF(list(gene_affinity, methylation_affinity), K, alpha)
-view(snf_result)
+View(snf_result)
 
-
-
-#####################################  CLUSTERING  ###############################################
+##########################SPECTRAL CLUSTERING########################
 
 C<-7
 
@@ -174,9 +198,6 @@ for (i in 1:7) {
 
 # View the results
 cluster_rows
-
-########################################### Differential Expression Analysis ##############################################
-
 
 cluster_rows_df <- data.frame(cluster = rep(1:length(cluster_rows), sapply(cluster_rows, length)),
                               gene = unlist(cluster_rows))
@@ -237,7 +258,6 @@ for (i in 1:7) {
 
 
 
-
 # Calculate the mean of the logFC columns
 logFC_mean <- rowMeans(results[, grep("^logFC_", colnames(results))])
 
@@ -269,9 +289,6 @@ EnhancedVolcano(
   
 )
 
-############################################# Enrichment Analysis #################################################################
-
-
 # Filter the results to only include significant genes
 significant_genes <- results_sub[results_sub$P.Value < threshold & results_sub$logfoldchange<0.0089, ]
 
@@ -279,7 +296,6 @@ significant_genes <- results_sub[results_sub$P.Value < threshold & results_sub$l
 significant_genes$GeneName <- rownames(significant_genes)
 View(significant_genes)
 
-view(significant_genes)
 gene_list <- as.matrix(significant_genes[, c("GeneName", "logfoldchange")])
 gene_list <- gene_list[order(gene_list[,2], decreasing=TRUE),]
 
@@ -290,7 +306,7 @@ gene_list <- gene_list[order(gene_list[,2], decreasing=TRUE),]
 gene_list <- substr(gene_list, 1, 15)
 
 
-#view(new_matrix)
+# view(new_matrix)
 view(gene_list)
 
 view(gene_list)
@@ -308,21 +324,20 @@ print(result)
 
 
 
-
-
 dotplot(result, showCategory = 30, title = "GO Enrichment Analysis" )
 barplot(result, showCategory = 30, xlab= "GO Enrichment Analysis" )
 cnetplot(result,10)
 goplot(result,20)
 geneID_by_category <- list()
+ 
+# expr_data <- get_expr_data(gene_list)
+# view(expr_data)
 
-expr_data <- get_expr_data(gene_list)
-#view(expr_data)
 # Create a heatmap
-#heatmap(result, expr_data)
+# heatmap(result, expr_data)
 
 for (i in 1:nrow(result)) {
-
+  
   category <- result[i, "Description"]
   geneIDs <- strsplit(result[i, "geneID"], "/")[[1]]
   
@@ -351,7 +366,3 @@ library(igraph)
 
 graph <- graph_from_data_frame(edges)
 plot(graph)
-
-
-
-
